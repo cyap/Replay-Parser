@@ -9,7 +9,7 @@ import replayCompile
 import statCollector
 
 
-class tournament():
+class Tournament():
 
 	def __init__(self, replays=None, pairings=None, players=None, alts=None):
 		self.replays = replays
@@ -39,9 +39,9 @@ class tournament():
 			replays = self.unmatchedReplays
 		match = getattr(self, filter+"Match")
 		matchedReplays = {replay for replay in replays if 
-						  match(replay, self.unmatchedPairings)
-						  }
+						  match(replay, self.unmatchedPairings)}
 		self.unmatchedReplays = self.unmatchedReplays - matchedReplays
+		self.unmatchedPairings = self.unmatchedPairings - {pairing for pairing in self.pairingReplayMap}
 		return matchedReplays
 		
 	def exactMatch(self, replay, pairings=None):
@@ -102,7 +102,7 @@ class tournament():
 		corresponding filter and remove from the set of unmatched pairings.
 		"""
 		self.pairingReplayMap[pairing] = (replay, filter)
-		self.unmatchedPairings.remove(pairing)
+		#self.unmatchedPairings.remove(pairing)
 	
 	def matchTournament(self):
 		""" Run all filters on set of replays and attempt to match each pairing 
@@ -112,58 +112,61 @@ class tournament():
 		fuzzy = self.filterReplaysByPairings("fuzzy")
 		partial = self.filterReplaysByPairings("partial")
 
-		print len(self.replays)
+		print "Total replays:", len(self.replays)
 		#print exact, len(exact)
 		#print fuzzy, len(fuzzy)
-		print partial, len(partial)
-		print self.unmatchedReplays
-		print self.unmatchedPairings
-		print self.fuzzyNameMatches
+		print "Partial matches:", partial, len(partial)
+		print "Unmatched replays:", self.unmatchedReplays
+		print "Unmatched pairings:", self.unmatchedPairings
+		#print self.fuzzyNameMatches
 		for x in self.pairings:
 			if x in self.pairingReplayMap: #initialize?
 				print x, self.pairingReplayMap[x]
 		
 		r = exact | fuzzy | partial
+		print sorted([replay.number for replay in r])
 		return r
+		
 	
+	# Might belong in replayCompile class
 	def filterReplaysByNumber(self, *numbers):
 		""" Remove replays from list by number. """
 		self.replays = self.unmatchedReplays = {replay for replay
 		in self.replays if replay.number not in numbers}
 		
+	def addReplaysByNumber(self, *numbers):
+		self.replays | {replay for replay in self.unmatchedReplays if replay.number in numbers}
 	# Method for shifting replays around
 		# Take replay from dictionary and add to unmatched set
 		# Remove other replay from unmatched set and place in dictionary
 		
-	@staticmethod
-	def parsePairings(fileString=None, url=None, pairingsRaw=None):
-		""" Given a thread URL from which pairings are to be extracted or a text
-		(file) of pairings, parse line-by-line for match-ups. Return list of
-		pairings with order retained.
-			
-		Tournaments are generally created with the same bracketmaker, which uses
-		' vs. ' as a separator. May need to accommodate code for discrepancies.
-			
-		"""
-		# Pairings from text file
-		if fileString:
-			raw = open(fileString, "r").read().splitlines()
-		# Pairings from thread url
-		if url:
-			raw = urlopen(url)
-		pairingsRaw = (line for line in raw if " vs. " in line)
-		pairings = [frozenset(
-					re.sub(r'<.{0,4}>',"",name.strip()) for name in pairing
-					.strip("\n")
-					.lower()
-					.split(" vs. ")
-					) for pairing in pairingsRaw]
-		return pairings	
-	
-	@staticmethod
-	def participantsFromPairings(pairings):
-		""" Given pairings, parse and return a set of every unique player. """
-		# Option to break after Round 1
-		# Pros: Negligibly faster, avoids typos made in further rounds
-		# Cons: Will mess up if "bye" is used for multiple r1 match-ups
-		return set(chain.from_iterable(pairing for pairing in pairings))
+def parsePairings(fileString=None, url=None, pairingsRaw=None):
+	""" Given a thread URL from which pairings are to be extracted or a text
+	(file) of pairings, parse line-by-line for match-ups. Return list of
+	pairings with order retained.
+		
+	Tournaments are generally created with the same bracketmaker, which uses
+	' vs. ' as a separator. May need to accommodate code for discrepancies.
+		
+	"""
+	# Pairings from text file
+	if fileString:
+		raw = open(fileString, "r").read().splitlines()
+	# Pairings from thread url
+	if url:
+		raw = urlopen(url)
+	pairingsRaw = (line for line in raw if " vs. " in line)
+	pairings = [frozenset(
+				re.sub(r'<.{0,4}>',"",name.strip()) for name in pairing
+				.strip("\n")
+				.lower()
+				.split(" vs. ")
+				) for pairing in pairingsRaw]
+	return pairings	
+
+def participantsFromPairings(pairings):
+	""" Given pairings, parse and return a set of every unique player. """
+	# Option to break after Round 1
+	# Pros: Negligibly faster, avoids typos made in further rounds
+	# Cons: Will mess up if "bye" is used for multiple r1 match-ups
+	return set(chain.from_iterable(pairing for pairing in pairings))
