@@ -1,7 +1,6 @@
 import re
 from collections import defaultdict
 from itertools import combinations
-from math import fabs
 from urllib2 import urlopen, Request
 
 from fuzzywuzzy import process
@@ -18,17 +17,18 @@ class replay:
 		self.number = int(url.split("-")[-1])
 		self.tier = url.split("-")[1]
 		self.replayContent = urlopen(Request(url, headers=replay.requestHeader)
-									).read().split("\n")
+							 ).read().split("\n")
+		self.players = self.players() # (Eo, Finchinator) (p1, p2)
 		
 		# Generator or list for replay content?
 		# Iterate through text vs line by line
 
 		# Get players
-		self.players = self.players() # (Eo, Finchinator) (p1, p2)
+		
 		winIndex = self.players.index(self.winner())
-		self.wl = {"p"+str(winIndex+1):"win","p"+str(int(fabs(winIndex 
-					- 1)+1)):"lose"}
-		self.teams = None
+		self.wl = {"p"+str(winIndex + 1):"win",
+				   "p"+str((winIndex + 1) % 2 + 1):"lose"}
+		self._teams = None
 		self.leads = None
 		self.moves = None
 		
@@ -44,7 +44,7 @@ class replay:
 		# User dictionary
 		# Move to other class?
 		return re.sub("[^\w\s'\.-]+", "", name).lower().strip()
-		
+	
 	def players(self):
 		""" Return tuple with formatted player names. """
 		
@@ -62,10 +62,10 @@ class replay:
 		# Handle output
 		return next(line.split("|")[2]
 					for line in self.replayContent if line.startswith("|gen"))
-
-	def getTeams(self):
-		if self.teams:
-			return self.teams
+	@property
+	def teams(self):
+		if self._teams:
+			return self._teams
 		if self.tier.startswith("gen4"):
 			return self.teamsFromParse()
 		return self.teamsFromPreview()
@@ -100,6 +100,8 @@ class replay:
 					poke = "Keldeo"
 				if poke.startswith("Gastrodon"):
 					poke = "Gastrodon"
+				if poke.startswith("Genesect"):
+					poke = "Genesect"
 				teams[self.wl[player]].append(poke)
 			if line.startswith("|teampreview"):
 				self.teams = teams
@@ -144,8 +146,12 @@ class replay:
 		for line in self.replayContent:
 			if line.startswith("|move"):
 				ll = line.split("|")
-				player = ll[2].split("a:")[0]
-				pokemon = nicknames[player][ll[2]]
+				p = ll[2]
+				# Glitch in replay formatting
+				if re.match("p[12]{1}:", p):
+					p = p.replace(":","a:")
+				player = p.split("a:")[0]
+				pokemon = nicknames[player][p]
 				move = ll[3]
 				moveset = moves[self.wl[player]][pokemon]
 				if move not in moveset:
@@ -163,10 +169,11 @@ class replay:
 		return moves
 					
 	# Refactor in other classes
-	def pairs(self, teams = None):
+	def combos(self, n, teams = None):
+		""" Returns all possible combinations of n Pokemon for both teams. """
 		if not teams:
 			teams = self.teamsFromPreview()
-		return (combinations(team, 2) for team in (teams[key] for key in teams))
+		return (combinations(team, n) for team in (teams[key] for key in teams))
 	
 	def winner(self):
 		""" Parse replay for winner, declared at the bottom of replay. """
