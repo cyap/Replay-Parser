@@ -4,7 +4,7 @@ from urllib2 import urlopen
 
 from bs4 import BeautifulSoup
 
-import replay
+from replay import replay
 
 """ Module dealing with assembly and management of set of replay objects. """
 
@@ -46,7 +46,7 @@ def replaysFromLinks(urls):
 def openReplay(url):
 	""" Validate replay links and open; return None if 404 error. """
 	try:
-		return replay.replay(url)
+		return replay(url)
 	except:
 		#traceback.print_exc()
 		#print url
