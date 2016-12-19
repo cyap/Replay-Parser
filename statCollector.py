@@ -14,17 +14,18 @@ def getData(teams):
 	return data
 	
 def usage(replays):
-	teams = chain.from_iterable([replay.getTeams()["win"]
-							   + replay.getTeams()["lose"] for replay in replays])
+	teams = chain.from_iterable([replay.teams["win"]
+							   + replay.teams["lose"] 
+							   for replay in replays])
 	return Counter(teams)
 
 def wins(replays):
-	teams = chain.from_iterable([replay.getTeams()["win"] for replay in replays])
+	teams = chain.from_iterable([replay.teams["win"] for replay in replays])
 	return Counter(teams)
 	
 def combos(replays, size = 2, cutoff = 2):
-	combos = chain.from_iterable((list(combinations(replay.getTeams()["win"], size)) 
-								+ list(combinations(replay.getTeams()["lose"],size))
+	combos = chain.from_iterable((list(combinations(replay.teams["win"], size)) 
+								+ list(combinations(replay.teams["lose"],size))
 								  for replay in replays))
 	combos = Counter((formatCombo(frozenset(combination)) 
 					for combination in combos))
@@ -36,7 +37,7 @@ def combos(replays, size = 2, cutoff = 2):
 # Refactor to use method in replay.py
 
 def comboWins(replays, size = 2):
-	combos = chain.from_iterable((list(combinations(replay.getTeams()["win"], size))
+	combos = chain.from_iterable((list(combinations(replay.teams["win"], size))
 								  for replay in replays))
 	return Counter((formatCombo(frozenset(combination)) 
 					for combination in combos))
@@ -72,8 +73,8 @@ def formatCombo(pairing):
 			
 def prettyPrint(cname, cwidth, usage, wins, total, hide = 1):
 	header = (
-		"[B]Sample Text:[/B]\n"
-		"[HIDE]"+hide * ("[CODE]") +
+#		"[B]Sample Text:[/B]\n"
+#		"[HIDE]"+hide * ("[CODE]") +
 		"+ ---- + {2} + --- + -------- + ------- +\n"
 		"| Rank | {0}{1} | Use |  Usage % |  Win %  |\n"
 		"+ ---- + {3} + --- + -------- + ------- +"
@@ -94,5 +95,5 @@ def prettyPrint(cname, cwidth, usage, wins, total, hide = 1):
 	footer = "[/CODE]"+("[/HIDE]") * hide
 	print header
 	print body
-	print footer
+#	print footer
 		
