@@ -40,7 +40,8 @@ class Tournament():
 		matchedReplays = {replay for replay in replays if 
 						  match(replay, self.unmatchedPairings)}
 		self.unmatchedReplays = self.unmatchedReplays - matchedReplays
-		self.unmatchedPairings = self.unmatchedPairings - {pairing for pairing in self.pairingReplayMap}
+		self.unmatchedPairings = self.unmatchedPairings - {pairing for pairing
+		in self.pairingReplayMap}
 		return matchedReplays
 		
 	def exactMatch(self, replay, pairings=None):
@@ -134,14 +135,14 @@ class Tournament():
 		
 	def addReplaysByNumber(self, *numbers):
 		self.replays | {replay for replay in self.unmatchedReplays 
-					    if replay.number in numbers}
+						if replay.number in numbers}
 	# Method for shifting replays around
 		# Take replay from dictionary and add to unmatched set
 		# Remove other replay from unmatched set and place in dictionary
 		
 def parsePairings(fileString=None, url=None, pairingsRaw=None):
 	""" Given a thread URL from which pairings are to be extracted or a text
-	(file) of pairings, parse line-by-line for match-ups. Return list of
+	file of pairings, parse line-by-line for match-ups. Return list of
 	pairings with order retained.
 		
 	Tournaments are generally created with the same bracketmaker, which uses
@@ -155,7 +156,10 @@ def parsePairings(fileString=None, url=None, pairingsRaw=None):
 		raw = open(fileString, "r").read().splitlines()
 	# Pairings from thread url
 	if url:
-		raw = urlopen(url)
+		# Pairings are contained in first post of a thread
+		# Posts are framed by <article> tags
+		raw = urlopen(url).read().split("</article>",1)[0].split("\n")
+		
 	# Checks for "vs" with no adjacent alphanumeric characters
 	# TODO: Check original post only
 	pairingsRaw =(line for line in raw if re.compile(r'.*\Wvs\W.*').match(line))
@@ -167,7 +171,7 @@ def parsePairings(fileString=None, url=None, pairingsRaw=None):
 	return pairings	
 
 def participantsFromPairings(pairings):
-	""" Given pairings, parse and return a set of every unique player. """
+	""" Given pairings, return a set comprised of each unique player. """
 	# Option to break after Round 1
 	# Pros: Negligibly faster, avoids typos made in further rounds
 	# Cons: Will mess up if "bye" is used for multiple r1 match-ups
