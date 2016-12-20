@@ -8,7 +8,6 @@ from fuzzywuzzy import process
 import replayCompile
 import statCollector
 
-
 class Tournament():
 
 	def __init__(self, replays=None, pairings=None, players=None, alts=None):
@@ -127,7 +126,6 @@ class Tournament():
 		print sorted([replay.number for replay in r])
 		return r
 		
-	
 	# Might belong in replayCompile class
 	def filterReplaysByNumber(self, *numbers):
 		""" Remove replays from list by number. """
@@ -135,7 +133,8 @@ class Tournament():
 		in self.replays if replay.number not in numbers}
 		
 	def addReplaysByNumber(self, *numbers):
-		self.replays | {replay for replay in self.unmatchedReplays if replay.number in numbers}
+		self.replays | {replay for replay in self.unmatchedReplays 
+					    if replay.number in numbers}
 	# Method for shifting replays around
 		# Take replay from dictionary and add to unmatched set
 		# Remove other replay from unmatched set and place in dictionary
@@ -146,7 +145,9 @@ def parsePairings(fileString=None, url=None, pairingsRaw=None):
 	pairings with order retained.
 		
 	Tournaments are generally created with the same bracketmaker, which uses
-	' vs. ' as a separator. May need to accommodate code for discrepancies.
+	' vs. ' as a separator. Current implementation accounts for minor
+	discrepancies, such as omission of the period and immediately adjacenct HTML
+	formatting tags.
 		
 	"""
 	# Pairings from text file
@@ -155,13 +156,14 @@ def parsePairings(fileString=None, url=None, pairingsRaw=None):
 	# Pairings from thread url
 	if url:
 		raw = urlopen(url)
-	pairingsRaw = (line for line in raw if " vs. " in line)
-	pairings = [frozenset(
-				re.sub(r'<.{0,4}>',"",name.strip()) for name in pairing
-				.strip("\n")
-				.lower()
-				.split(" vs. ")
-				) for pairing in pairingsRaw]
+	# Checks for "vs" with no adjacent alphanumeric characters
+	# TODO: Check original post only
+	pairingsRaw =(line for line in raw if re.compile(r'.*\Wvs\W.*').match(line))
+	pairings = [frozenset(name.strip() for name in 
+				re.compile(r'\Wvs\W').split(
+				re.sub(r'<.{0,4}>',"",
+				pairing).strip("\n").lower()
+				)) for pairing in pairingsRaw]
 	return pairings	
 
 def participantsFromPairings(pairings):
