@@ -71,9 +71,9 @@ class replay:
 		return self.teamsFromPreview()
 	
 	def addToTeam(self, team, pokemon):
-		if not self.teams:
+		if not self._teams:
 			self.teamsFromParse()
-		self.teams[team].append(pokemon)
+		self._teams[team].append(pokemon)
 	
 	def teamsFromPreview(self):
 		""" Return dict containing p1 and p2's teams.
@@ -104,7 +104,7 @@ class replay:
 					poke = "Genesect"
 				teams[self.wl[player]].append(poke)
 			if line.startswith("|teampreview"):
-				self.teams = teams
+				self._teams = teams
 				return teams
 				
 	def teamsFromParse(self):
@@ -173,7 +173,8 @@ class replay:
 		""" Returns all possible combinations of n Pokemon for both teams. """
 		if not teams:
 			teams = self.teamsFromPreview()
-		return (combinations(team, n) for team in (teams[key] for key in teams))
+		return {"win":list(combinations(teams["win"], n)),
+				"lose":list(combinations(teams["lose"], n))}
 	
 	def winner(self):
 		""" Parse replay for winner, declared at the bottom of replay. """
