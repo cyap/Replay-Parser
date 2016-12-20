@@ -1,12 +1,13 @@
+""" Module used to generate stats for weekly tournament circuit. """
+
 import replayCompile
 import statCollector
 import tournament
 
-""" Module used to generate stats for weekly tournament circuit. """
-
 """ List of known alternate accounts. Fed as input to ensure proper matching."""
 
 alts = {"frenzied":"toxzn", 
+		"plasma boss":"toxzn",
 		"freezing gene":"flamingvictini",
 		"stolen sentiments":"flamingvictini",
 		"alepipluprevenge":"prague kick",
@@ -25,6 +26,8 @@ alts = {"frenzied":"toxzn",
 		"how to be sure":"mael",
 		"secret vulpix":"-snow",
 		"costa":"c05ta",
+		"eo":"eo ut mortus",
+		"sperl":"axel\xe2\x84\xa2"
 		}
 		
 """ URLs, replay ranges, and replays to be omitted for each individual tournament, with indices corresponding to tournament number.
@@ -74,26 +77,32 @@ def tour(url = None, rng = None, omitReplays = None):
 	return tour.matchTournament()
 	
 
-def printout(RL):
-	""" Function to calculate and print out all stats. """
-	usage = statCollector.usage(RL)
-	wins = statCollector.wins(RL)
-	combos = statCollector.combos(RL, cutoff = 5)
-	combowins = statCollector.comboWins(RL)
+def basic_stats(replay_list):
+	""" Function to calculate and print out basic stats. """
+	usage = statCollector.usage(replay_list)
+	wins = statCollector.wins(replay_list)
 	totalTeams = (sum(usage.values())/6)
 	statCollector.prettyPrint("Pokemon", 18, usage,wins,totalTeams)
 	
-	#Extended stats
+def extended_stats(replay_list, usage = None):
+	""" Function to calculate and print out extended stats. """
+	if not usage:
+		usage = statCollector.usage(replay_list)
+	
+	# Combinations
+	combos = statCollector.combos(replay_list, cutoff = 5)
+	combowins = statCollector.comboWins(replay_list)
 	for i in range(2,7):
-		combos = statCollector.combos(RL, size = i, cutoff = 4)
-		combowins = statCollector.comboWins(RL, size = i)
+		combos = statCollector.combos(replay_list, size = i, cutoff = 4)
+		combowins = statCollector.comboWins(replay_list, size = i)
 
 		length = len(sorted(combos, key=len, reverse = True)[0]) + 2
 		statCollector.prettyPrint("Combinations of "+str(i), length,
 									combos,combowins,totalTeams)
 
-	moves = statCollector.moves(RL, usage.keys())
-	moveWins = statCollector.moveWins(RL, usage.keys())
+	# Moves
+	moves = statCollector.moves(replay_list, usage.keys())
+	moveWins = statCollector.moveWins(replay_list, usage.keys())
 
 	for pokemon in usage.most_common():
 		statCollector.prettyPrint(pokemon[0], 22, 
@@ -103,8 +112,9 @@ def printout(RL):
 def main():
 	# Net stats
 	netResults = [tour(urls[i], ranges[i], omissions[i]) for i in range(0,8)]
-	RL = reduce((lambda x,y: x|y), netResults)
-	printout(RL)
+	[basic_stats(netResults[i] | netResults[i+1]) for i in range (0,8,2)]
+	#RL = reduce((lambda x,y: x|y), netResults)
+	#printout(RL)
 	
 # TODO
 
