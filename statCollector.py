@@ -7,7 +7,7 @@ from replay import replay
 # Separate responsibilities: for filtering teams and running data on teams
 # Port to database
 
-def getData(teams):
+def get_data(teams):
 	data = Counter()
 	map(lambda x:
 		operator.setitem(data, x, data.get(x, 0) + 1), teams)
@@ -33,7 +33,7 @@ def combos(replays, size = 2, cutoff = 2):
 			 replay.combos(size)[team] for team in ("win","lose")) 
 			 for replay in replays)
 
-	combos = Counter((formatCombo(frozenset(combination)) 
+	combos = Counter((format_combo(frozenset(combination)) 
 					for combination in combos))
 	if cutoff:
 		combos = Counter({combo:use for combo,use in combos.iteritems() 
@@ -41,19 +41,19 @@ def combos(replays, size = 2, cutoff = 2):
 	return combos
 
 
-def comboWins(replays, size = 2):
+def combo_wins(replays, size = 2):
 	combos = chain.from_iterable((list(combinations(replay.teams["win"], size))
 								  for replay in replays))
-	return Counter((formatCombo(frozenset(combination)) 
+	return Counter((format_combo(frozenset(combination)) 
 					for combination in combos))
 def leads(replays):
-	leads = chain.from_iterable((replay.getLeads()["win"], 
-								replay.getLeads()["lose"])
+	leads = chain.from_iterable((replay.get_leads()["win"], 
+								replay.get_leads()["lose"])
 								  for replay in replays)
 	return Counter(leads)
 	
-def leadWins(replays):
-	leads = (replay.getLeads()["win"] for replay in replays)
+def lead_wins(replays):
+	leads = (replay.get_leads()["win"] for replay in replays)
 	return Counter(leads)
 
 def moves(replays, pokemonList):
@@ -61,22 +61,22 @@ def moves(replays, pokemonList):
 	# team = [pokemon:moveset, pokemon2:moveset]
 		# Create move counter
 	return {pokemon: Counter(chain.from_iterable([
-				replay.getMoves()["win"][pokemon]
-			  + replay.getMoves()["lose"][pokemon] for replay in replays]))
+				replay.get_moves()["win"][pokemon]
+			  + replay.get_moves()["lose"][pokemon] for replay in replays]))
 				for pokemon in pokemonList}
 	# check if pokemon in teams -> sets?
 	# [iterable of moves]
 	# return {pokemon:moveCounter, pokemon:moveCounter}
 
-def moveWins(replays, pokemonList):
+def move_wins(replays, pokemonList):
 	return {pokemon: Counter(chain.from_iterable([
-		replay.getMoves()["win"][pokemon] for replay in replays]))
+		replay.get_moves()["win"][pokemon] for replay in replays]))
 		for pokemon in pokemonList}
 	
-def formatCombo(pairing):
+def format_combo(pairing):
 	return str(pairing).strip("frozenset(").strip(")").replace("'","")
 			
-def prettyPrint(cname, cwidth, usage, wins, total, hide = 1):
+def pretty_print(cname, cwidth, usage, wins, total, hide = 1):
 	header = (
 #		"[B]Sample Text:[/B]\n"
 #		"[HIDE]"+hide * ("[CODE]") +
@@ -98,6 +98,7 @@ def prettyPrint(cname, cwidth, usage, wins, total, hide = 1):
 				" " * (3-len(str(int(userate)))), userate,
 				" " * (3-len(str(int(winrate)))), winrate)
 	footer = "[/CODE]"+("[/HIDE]") * hide
+	return header + "\n" + body
 	print header
 	print body
 #	print footer

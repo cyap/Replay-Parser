@@ -15,7 +15,7 @@ class replay:
 	def __init__(self, url):
 		self.url = url
 		self.number = int(url.split("-")[-1])
-		self.tier = url.split("-")[1]
+		self.tier = url.split("-")[-2]
 		self.replayContent = urlopen(Request(url, headers=replay.requestHeader)
 							 ).read().split("\n")
 		self.players = self.players() # (Eo, Finchinator) (p1, p2)
@@ -54,7 +54,7 @@ class replay:
 		p2 = replay.formatName(next(players).split("|")[3])
 		return (p1, p2)
 		
-	def getPlayers(self):
+	def get_players(self):
 		return self.players
 		
 	def generation(self):
@@ -66,16 +66,16 @@ class replay:
 	def teams(self):
 		if self._teams:
 			return self._teams
-		if self.tier.startswith("gen4"):
-			return self.teamsFromParse()
-		return self.teamsFromPreview()
+		if re.compile(".*gen[1-4].*").match(self.tier):
+			return self.teams_from_parse()
+		return self.teams_from_preview()
 	
-	def addToTeam(self, team, pokemon):
+	def add_to_team(self, team, pokemon):
 		if not self._teams:
-			self.teamsFromParse()
+			self.teams_from_parse()
 		self._teams[team].append(pokemon)
 	
-	def teamsFromPreview(self):
+	def teams_from_preview(self):
 		""" Return dict containing p1 and p2's teams.
 		
 		Only works for gen 5+, where teams are stated at the beginning of
@@ -107,7 +107,7 @@ class replay:
 				self._teams = teams
 				return teams
 				
-	def teamsFromParse(self):
+	def teams_from_parse(self):
 		#|drag|p1a: Zapdos|Zapdos|278\/383
 		#|switch|p1a: Isa|Flygon, F|301\/301
 		teams = {"win":[], "lose":[]}
@@ -124,7 +124,7 @@ class replay:
 		self.teams = teams
 		return teams
 	
-	def getLeads(self):
+	def get_leads(self):
 		if self.leads:
 			return self.leads
 		leads = {"win":None,"lose":None}
@@ -138,7 +138,7 @@ class replay:
 				poke = ll[3].split(",")[0]
 				leads[self.wl[player]] = poke
 	
-	def getMoves(self):
+	def get_moves(self):
 		if self.moves:
 			return self.moves
 		moves = {"win":defaultdict(list),"lose":defaultdict(list)}
@@ -172,7 +172,7 @@ class replay:
 	def combos(self, n, teams = None):
 		""" Returns all possible combinations of n Pokemon for both teams. """
 		if not teams:
-			teams = self.teamsFromPreview()
+			teams = self.teams_from_preview()
 		return {"win":list(combinations(teams["win"], n)),
 				"lose":list(combinations(teams["lose"], n))}
 	
@@ -182,12 +182,12 @@ class replay:
 					in reversed(self.replayContent) if line.startswith("|win"))
 					.split("|")[2].split("<")[0])
 
-	def turnCount(self):
+	def turn_count(self):
 		""" Find last line marking a turn. Number corresponds to turn count. """
 		return int(next(line for line in reversed(self.replayContent) 
 						if line.startswith("|turn")).split("|")[2])
 
-	def isPokemonInReplay(self, pokemon):	
+	def pokemon_in_replay(self, pokemon):	
 		""" Return boolean indicating if Pokemon existed in match. """
 		# TODO: Non-tp gens
 		for line in self.replayContent:
@@ -196,7 +196,7 @@ class replay:
 			if line.startswith("|rule"):
 				return False
 	
-	def isMoveInReplay(self, move):
+	def move_in_replay(self, move):
 		""" Return boolean indicating if move was used in match. """
 		m = re.compile("\|move\|.*\|{0}\|.*".format(move))
 		return next((True for line in self.replayContent 

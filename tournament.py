@@ -21,7 +21,7 @@ class Tournament():
 		self.unmatchedReplays = self.replays
 		self.unmatchedPairings = set(self.pairings)
 		
-	def filterReplaysByPairings(self, filter, replays=None):
+	def filter_replays_by_pairings(self, filter, replays=None):
 		""" Return replays whose players correspond to a pairing.
 			
 		Exact: Checks for perfect matches.
@@ -44,41 +44,41 @@ class Tournament():
 		in self.pairingReplayMap}
 		return matchedReplays
 		
-	def exactMatch(self, replay, pairings=None):
+	def exact_match(self, replay, pairings=None):
 		""" Given a replay object and a list of pairing sets, return boolean
 		corresponding to the existence of the replay's player set in the pairing
 		list.
 		"""
-		pairing = frozenset(replay.getPlayers())
+		pairing = frozenset(replay.get_players())
 		if pairing in pairings:
-			self.updateMatches(pairing, replay, "exact")
+			self.update_matches(pairing, replay, "exact")
 			return True
 		return False
 	
-	def fuzzyMatch(self, replay, pairings=None):
+	def fuzzy_match(self, replay, pairings=None):
 		""" Given a replay object and a list of pairing sets, return boolean
 		corresponding to the existence of the replay's player set in the pairing
 		list.
 		"""
-		pairing = frozenset(self.getClosest(p) for p in replay.getPlayers())
+		pairing = frozenset(self.get_closest(p) for p in replay.get_players())
 		if pairing in pairings:
-			self.updateMatches(pairing, replay, "fuzzy")
+			self.update_matches(pairing, replay, "fuzzy")
 			return True
 		return False
 	
-	def partialMatch(self, replay, pairings=None):
+	def partial_match(self, replay, pairings=None):
 		""" Given a replay object and a list of pairing sets, return boolean
 		corresponding to the existence of at least one player in the replay's
 		player set in at least one pairing in the pairing set.
 		"""
-		for i, player in enumerate(replay.getPlayers()):
+		for i, player in enumerate(replay.get_players()):
 			for pairing in pairings:
-				if self.getClosest(player) in pairing:
-					self.updateMatches(pairing, replay, "partial")
+				if self.get_closest(player) in pairing:
+					self.update_matches(pairing, replay, "partial")
 					return True
 		return False
 		
-	def getClosest(self, player):
+	def get_closest(self, player):
 		""" Uses fuzzy string matching to find the closest match as dictated by
 		Levenshtein (edit) distance. Returns original name if no suitable match
 		is found.
@@ -97,20 +97,20 @@ class Tournament():
 		# If no good match
 		return player
 		
-	def updateMatches(self, pairing, replay, filter):
+	def update_matches(self, pairing, replay, filter):
 		""" Whenever a pairing-replay match is found, add to the map with the
 		corresponding filter and remove from the set of unmatched pairings.
 		"""
 		self.pairingReplayMap[pairing] = (replay, filter)
 		#self.unmatchedPairings.remove(pairing)
 	
-	def matchTournament(self):
+	def match_tournament(self):
 		""" Run all filters on set of replays and attempt to match each pairing 
 		to a replay. Return set of all replays that match. 
 		"""
-		exact = self.filterReplaysByPairings("exact")
-		fuzzy = self.filterReplaysByPairings("fuzzy")
-		partial = self.filterReplaysByPairings("partial")
+		exact = self.filter_replays_by_pairings("exact")
+		fuzzy = self.filter_replays_by_pairings("fuzzy")
+		partial = self.filter_replays_by_pairings("partial")
 
 		print "Total replays:", len(self.replays)
 		#print exact, len(exact)
@@ -124,23 +124,23 @@ class Tournament():
 				print x, self.pairingReplayMap[x]
 		
 		r = exact | fuzzy | partial
-		print sorted([replay.number for replay in r])
+		#print sorted([replay.number for replay in r])
 		return r
 		
 	# Might belong in replayCompile class
-	def filterReplaysByNumber(self, *numbers):
+	def filter_replays_by_number(self, *numbers):
 		""" Remove replays from list by number. """
 		self.replays = self.unmatchedReplays = {replay for replay
 		in self.replays if replay.number not in numbers}
 		
-	def addReplaysByNumber(self, *numbers):
+	def add_replays_by_number(self, *numbers):
 		self.replays | {replay for replay in self.unmatchedReplays 
 						if replay.number in numbers}
 	# Method for shifting replays around
 		# Take replay from dictionary and add to unmatched set
 		# Remove other replay from unmatched set and place in dictionary
 		
-def parsePairings(fileString=None, url=None, pairingsRaw=None):
+def parse_pairings(fileString=None, url=None, pairingsRaw=None):
 	""" Given a thread URL from which pairings are to be extracted or a text
 	file of pairings, parse line-by-line for match-ups. Return list of
 	pairings with order retained.
@@ -170,7 +170,7 @@ def parsePairings(fileString=None, url=None, pairingsRaw=None):
 				)) for pairing in pairingsRaw]
 	return pairings	
 
-def participantsFromPairings(pairings):
+def participants_from_pairings(pairings):
 	""" Given pairings, return a set comprised of each unique player. """
 	# Option to break after Round 1
 	# Pros: Negligibly faster, avoids typos made in further rounds

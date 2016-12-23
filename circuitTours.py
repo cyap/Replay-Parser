@@ -68,13 +68,13 @@ def tour(url = None, rng = None, omitReplays = None):
 	scrutinization.
 	"""
 	
-	pairings = tournament.parsePairings(url = url)
-	players = tournament.participantsFromPairings(pairings)
-	replays = replayCompile.replaysFromRange(rng)
+	pairings = tournament.parse_pairings(url = url)
+	players = tournament.participants_from_pairings(pairings)
+	replays = replayCompile.replays_from_range(rng)
 	tour = tournament.Tournament(replays, pairings, players, alts)
 	if omitReplays:
-		tour.filterReplaysByNumber(*omitReplays)
-	return tour.matchTournament()
+		tour.filter_replays_by_number(*omitReplays)
+	return tour.match_tournament()
 	
 
 def basic_stats(replay_list):
@@ -82,7 +82,7 @@ def basic_stats(replay_list):
 	usage = statCollector.usage(replay_list)
 	wins = statCollector.wins(replay_list)
 	totalTeams = (sum(usage.values())/6)
-	statCollector.prettyPrint("Pokemon", 18, usage,wins,totalTeams)
+	statCollector.pretty_print("Pokemon", 18, usage,wins,totalTeams)
 	
 def extended_stats(replay_list, usage = None):
 	""" Function to calculate and print out extended stats. """
@@ -91,45 +91,31 @@ def extended_stats(replay_list, usage = None):
 	
 	# Combinations
 	combos = statCollector.combos(replay_list, cutoff = 5)
-	combowins = statCollector.comboWins(replay_list)
+	combowins = statCollector.combo_wins(replay_list)
 	for i in range(2,7):
 		combos = statCollector.combos(replay_list, size = i, cutoff = 4)
-		combowins = statCollector.comboWins(replay_list, size = i)
+		combowins = statCollector.combo_wins(replay_list, size = i)
 
 		length = len(sorted(combos, key=len, reverse = True)[0]) + 2
-		statCollector.prettyPrint("Combinations of "+str(i), length,
+		statCollector.pretty_print("Combinations of "+str(i), length,
 									combos,combowins,totalTeams)
 
 	# Moves
 	moves = statCollector.moves(replay_list, usage.keys())
-	moveWins = statCollector.moveWins(replay_list, usage.keys())
+	move_wins = statCollector.move_wins(replay_list, usage.keys())
 
 	for pokemon in usage.most_common():
-		statCollector.prettyPrint(pokemon[0], 22, 
-		moves[pokemon[0]], moveWins[pokemon[0]], usage[pokemon[0]], hide = 1)
+		statCollector.pretty_print(pokemon[0], 22, 
+		moves[pokemon[0]], move_wins[pokemon[0]], usage[pokemon[0]], hide = 1)
 
 
 def main():
 	# Net stats
 	netResults = [tour(urls[i], ranges[i], omissions[i]) for i in range(0,8)]
 	[basic_stats(netResults[i] | netResults[i+1]) for i in range (0,8,2)]
-	#RL = reduce((lambda x,y: x|y), netResults)
+	RL = reduce((lambda x,y: x|y), netResults)
+	basic_stats(RL)
 	#printout(RL)
-	
-# TODO
-
-# Handle duplicates
-# Alt dictionary and fixing glitches
-# Chain replays based on guesses ???
-
-# close resources
-# Input stats and adding missing data manually
-# Methods with multiple variations - how to implement
-# Cumulative stats - memento
-
-# Fix the column width for 100% usage - DONE
-# Ditto's moves
-# Pokemon's highest percentage partner
 
 if __name__ == "__main__":
 	main()
