@@ -3,7 +3,7 @@ from collections import Counter
 from itertools import chain
 from urllib2 import urlopen
 
-from fuzzywuzzy import process
+from fuzzywuzzy import fuzz
 
 import replayCompile
 import statCollector
@@ -14,7 +14,7 @@ class Tournament():
 		self.replays = replays
 		self.pairings = pairings # Set of all pairings
 		self.players = players # Set of all players
-		self.fuzzyNameMatches = {} # replay name : closest playername dict
+		self.fuzzyNameMatches = {}
 		if alts:
 			self.fuzzyNameMatches = alts
 		self.pairingReplayMap = {}
@@ -85,20 +85,21 @@ class Tournament():
 		Levenshtein (edit) distance. Returns original name if no suitable match
 		is found.
 		"""
+
 		# Check if player exists in players
 		if player in self.players:
 			return player
+			
 		# Check if player exists in dict
 		if player in self.fuzzyNameMatches:
 			return self.fuzzyNameMatches[player]
+			
 		# Fuzzy string matching
-		newplayer = process.extractOne(player, self.players) 
-		if newplayer[1] > 70:
-			self.fuzzyNameMatches[player] = newplayer[0]
-			return newplayer[0]
-		# If no good match
-		self.fuzzyNameMatches[player] = player
-		return player
+		newplayer = next((p for p in self.players 
+						  if fuzz.partial_ratio(p,player) > 80)
+						  ,player)
+		self.fuzzyNameMatches[player] = newplayer
+		return newplayer
 		
 	def update_matches(self, pairing, replay, filter):
 		""" Whenever a pairing-replay match is found, add to the map with the
@@ -117,13 +118,13 @@ class Tournament():
 
 		print "Total replays:", len(self.replays)
 		#print exact, len(exact)
-		#print fuzzy, len(fuzzy)
-		print "Partial matches:", partial, len(partial)
+		#print "Fuzzy matches", fuzzy, len(fuzzy)
+		#print "Partial matches:", partial, len(partial)
 		print "Unmatched replays:", self.unmatchedReplays
 		print "Unmatched pairings:", self.unmatchedPairings
 		#print self.fuzzyNameMatches
 		for x in self.pairings:
-			if x in self.pairingReplayMap: #initialize?
+			if x in self.pairingReplayMap:
 				print x, self.pairingReplayMap[x]
 		
 		r = exact | fuzzy | partial
@@ -166,7 +167,7 @@ def parse_pairings(fileString=None, url=None, pairingsRaw=None):
 	# Checks for "vs" with no adjacent alphanumeric characters
 	pairingsRaw = (line for line in raw if
 				   re.compile(r'.*\Wvs\W.*').match(line))
-	pairings = [frozenset(name.strip() for name in 
+	pairings = [frozenset(re.sub("&#.*;", "", name.strip()) for name in 
 				re.compile(r'\Wvs\W').split(
 				re.sub(r'<.{0,4}>',"",pairing)
 				.strip("\n").lower()
