@@ -36,12 +36,14 @@ class Tournament():
 		# May change to default regardless
 		if not replays:
 			replays = self.unmatchedReplays
-		match = getattr(self, filter+"Match")
+		match = getattr(self, filter+"_match")
 		matchedReplays = {replay for replay in replays if 
 						  match(replay, self.unmatchedPairings)}
-		self.unmatchedReplays = self.unmatchedReplays - matchedReplays
-		self.unmatchedPairings = self.unmatchedPairings - {pairing for pairing
-		in self.pairingReplayMap}
+		self.unmatchedReplays -= matchedReplays
+		self.unmatchedPairings -= set(self.pairingReplayMap.keys())
+		#self.unmatchedPairings = (self.unmatchedPairings 
+		#	- {pairing for pairing in self.pairingReplayMap}
+		#)
 		return matchedReplays
 		
 	def exact_match(self, replay, pairings=None):
@@ -71,7 +73,7 @@ class Tournament():
 		corresponding to the existence of at least one player in the replay's
 		player set in at least one pairing in the pairing set.
 		"""
-		for i, player in enumerate(replay.get_players()):
+		for player in replay.get_players():
 			for pairing in pairings:
 				if self.get_closest(player) in pairing:
 					self.update_matches(pairing, replay, "partial")
@@ -95,6 +97,7 @@ class Tournament():
 			self.fuzzyNameMatches[player] = newplayer[0]
 			return newplayer[0]
 		# If no good match
+		self.fuzzyNameMatches[player] = player
 		return player
 		
 	def update_matches(self, pairing, replay, filter):
@@ -161,12 +164,12 @@ def parse_pairings(fileString=None, url=None, pairingsRaw=None):
 		raw = urlopen(url).read().split("</article>",1)[0].split("\n")
 		
 	# Checks for "vs" with no adjacent alphanumeric characters
-	# TODO: Check original post only
-	pairingsRaw =(line for line in raw if re.compile(r'.*\Wvs\W.*').match(line))
+	pairingsRaw = (line for line in raw if
+				   re.compile(r'.*\Wvs\W.*').match(line))
 	pairings = [frozenset(name.strip() for name in 
 				re.compile(r'\Wvs\W').split(
-				re.sub(r'<.{0,4}>',"",
-				pairing).strip("\n").lower()
+				re.sub(r'<.{0,4}>',"",pairing)
+				.strip("\n").lower()
 				)) for pairing in pairingsRaw]
 	return pairings	
 
