@@ -8,19 +8,20 @@ from bs4 import BeautifulSoup
 
 from replay import replay
 
-defaultURLHeader = "http://replay.pokemonshowdown.com/"
+DEFAULT_URL_HEADER = "http://replay.pokemonshowdown.com/"
 
-def replays_from_thread(threadurl, URLHeader=defaultURLHeader, tier=None):
+def replays_from_thread(threadurl, url_header=DEFAULT_URL_HEADER, tier=None):
 	""" Parse given thread for replay links and convert to set of replays. """
 	thread = BeautifulSoup(urlopen(threadurl).read(), "html.parser")
 	urls = (url.get("href") for url in thread.findAll("a") 
-			if url.get("href") and url.get("href").startswith(URLHeader))
+			if url.get("href") and url.get("href").startswith(url_header))
 	# Optional: Filter by tier
+	# TODO: Tier from replay object or URL?
 	if tier:
-		urls = (url for url in urls if url.split("-")[1] == tier)
+		urls = (url for url in urls if url.split("-")[-2] == tier)
 	return replays_from_links(urls)
 
-def replays_from_range(range, URLHeader=defaultURLHeader, server="smogtours",
+def replays_from_range(range, url_header=DEFAULT_URL_HEADER, server="smogtours",
 	tier="gen7pokebankou"):
 	""" Assemble list of replays through mutating the default replay URL. 
 	
@@ -33,8 +34,8 @@ def replays_from_range(range, URLHeader=defaultURLHeader, server="smogtours",
 	because the replay was not saved or because a different tier was played for
 	that number.
 	"""
-	completeURLHeader = URLHeader + server + "-" + tier + "-"
-	urls = (completeURLHeader + str(i) for i in range)
+	complete_url_header = url_header + server + "-" + tier + "-"
+	urls = (complete_url_header + str(i) for i in range)
 	return replays_from_links(urls)
 
 def replays_from_links(urls):
