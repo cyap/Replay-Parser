@@ -59,7 +59,8 @@ class Tournament():
 		corresponding to the existence of the replay's player set in the pairing
 		list.
 		"""
-		pairing = frozenset(format_name(self.get_closest(p)) for p in replay.players)
+		pairing = frozenset(self.get_closest(format_name(p)) 
+							for p in replay.players)
 		if pairing in pairings:
 			self.pairingReplayMap[pairing] = (replay, "fuzzy")
 			return True
@@ -149,12 +150,12 @@ def parse_pairings(fileString=None, url=None, pairingsRaw=None):
 		
 	# Checks for "vs" with no adjacent alphanumeric characters
 	pairingsRaw = (line for line in raw if
-				   re.compile(r'.*\Wvs\W.*').match(line))
-	pairings = [frozenset(re.sub("&#.*;", "", name.strip()) for name in 
-				re.compile(r'\Wvs\W').split(
-				re.sub(r'<.{0,4}>',"",pairing)
-				.strip("\n").lower()
-				)) for pairing in pairingsRaw]
+				   re.match(r".*\Wvs\W.*", line))
+	# Eliminate all HTML formatting tags, then split pairings by "vs" 
+	# + whitespace
+	pairings = [frozenset(format_name(name) for name in
+				re.split(r"\Wvs\W", re.sub(r"<.{0,4}>","",pairing).strip("\n"))
+				) for pairing in pairingsRaw]
 	return pairings	
 
 def participants_from_pairings(pairings):
@@ -164,12 +165,9 @@ def participants_from_pairings(pairings):
 	# Cons: Will mess up if "bye" is used for multiple r1 match-ups
 	return set(chain.from_iterable(pairing for pairing in pairings))
 	
-	
 def format_name(name):
-	""" Given a username, format to eliminate special characters. 
+	""" Given a username, eliminate special characters and escaped unicode.
 	
 	Supported characters: Letters, numbers, spaces, period, apostrophe. 
 	"""
-	# User dictionary
-	# Move to other class?
-	return re.sub("[^\w\s'\.-]+", "", name).lower().strip()
+	return re.sub("[^\w\s'\.-]+", "", re.sub("&#.*;", "", name)).lower().strip()
