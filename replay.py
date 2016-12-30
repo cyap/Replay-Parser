@@ -2,13 +2,12 @@ import re
 from collections import defaultdict
 from itertools import combinations
 from urllib2 import urlopen, Request
-
-from fuzzywuzzy import process
+import profile
 
 class replay:
 
 	# User-agent wrapper to mimic browser requests
-	requestHeader = {"User-Agent" : 
+	REQUEST_HEADER = {"User-Agent" : 
 	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_5) AppleWebKit/537.36 (KHTML,"
 	"like Gecko) Chrome/54.0.2840.98 Safari/537.36"}
 
@@ -16,13 +15,14 @@ class replay:
 		self.url = url
 		self.number = int(url.split("-")[-1])
 		self.tier = url.split("-")[-2]
-		self.replayContent = urlopen(Request(url, headers=replay.requestHeader)
-							 ).read().split("\n")
+		self.replayContent = [line for line in
+			urlopen(Request(url, headers=replay.REQUEST_HEADER))
+			.read()
+			.split("\n")
+			if line.startswith("|")]
 		self.players = self.players() # (Eo, Finchinator) (p1, p2)
 		
-		# Generator or list for replay content?
 		# Iterate through text vs line by line
-
 		# Get players
 		
 		winIndex = self.players.index(self.winner())
@@ -34,34 +34,22 @@ class replay:
 		
 	def __repr__(self):
 		return self.players.__str__()
-
-	@staticmethod
-	def formatName(name):
-		""" Given a username, format to eliminate special characters. 
-		
-		Supported characters: Letters, numbers, spaces, period, apostrophe. 
-		"""
-		# User dictionary
-		# Move to other class?
-		return re.sub("[^\w\s'\.-]+", "", name).lower().strip()
 	
 	def players(self):
 		""" Return tuple with formatted player names. """
 		
 		players = (line for line in self.replayContent if
-				   line.startswith("|player|"))
-		p1 = replay.formatName(next(players).split("|")[3])
-		p2 = replay.formatName(next(players).split("|")[3])
+				   line.startswith("|player"))
+		p1 = format_name(next(players).split("|")[3])
+		p2 = format_name(next(players).split("|")[3])
 		return (p1, p2)
-		
-	def get_players(self):
-		return self.players
 		
 	def generation(self):
 		""" Return int/string representing generation. """
 		# Handle output
 		return next(line.split("|")[2]
-					for line in self.replayContent if line.startswith("|gen"))
+					for line in self.replayContent 
+					if line.startswith("|gen"))
 	@property
 	def teams(self):
 		if self._teams:
@@ -81,18 +69,10 @@ class replay:
 		Only works for gen 5+, where teams are stated at the beginning of
 		replays. 
 		"""
-		teams = {"win":[], "lose":[]}
-		#pokes = (line.split("|") for line in self.replayContent 
-		#			if line.startswith("|poke"))
-		#for preview in previews:
-		#	player = preview[
-		#	poke = preview
-		#	teams[self.wl[preview[2]]].append(preview[3].split(",")[0])
-		# generator or list?
-		#return teams
-		
+		teams = {"win":[], "lose":[]}		
 		for line in self.replayContent:
 			if line.startswith("|poke"):
+			#if line[:5] == "|poke":
 				ll = line.split("|")
 				player = ll[2]
 				poke = ll[3].split(",")[0]
@@ -104,6 +84,7 @@ class replay:
 					poke = "Genesect"
 				teams[self.wl[player]].append(poke)
 			if line.startswith("|teampreview"):
+			#elif line[:12] == "|teampreview":
 				self._teams = teams
 				return teams
 				
@@ -178,18 +159,21 @@ class replay:
 	
 	def winner(self):
 		""" Parse replay for winner, declared at the bottom of replay. """
-		return replay.formatName(next(line for line 
-					in reversed(self.replayContent) if line.startswith("|win"))
-					.split("|")[2].split("<")[0])
+		return format_name(next(line for line in reversed(self.replayContent) 
+								#if line.startswith("|win"))
+								if line[:4] == "|win")
+								.split("|")[2].split("<")[0])
 
 	def turn_count(self):
 		""" Find last line marking a turn. Number corresponds to turn count. """
 		return int(next(line for line in reversed(self.replayContent) 
-						if line.startswith("|turn")).split("|")[2])
+						if line.startswith("|turn"))
+						.split("|")[2])
 
 	def pokemon_in_replay(self, pokemon):	
 		""" Return boolean indicating if Pokemon existed in match. """
 		# TODO: Non-tp gens
+		# Check teams
 		for line in self.replayContent:
 			if line.startswith("|poke") and pokemon in line:
 				return True
@@ -201,3 +185,21 @@ class replay:
 		m = re.compile("\|move\|.*\|{0}\|.*".format(move))
 		return next((True for line in self.replayContent 
 					 if m.match(line)), False)
+
+def format_name(name):
+	""" Given a username, format to eliminate special characters. 
+	
+	Supported characters: Letters, numbers, spaces, period, apostrophe. 
+	"""
+	# User dictionary
+	# Move to other class?
+	return re.sub("[^\w\s'\.-]+", "", name).lower().strip()
+
+def main(l):
+	for r in l:
+		a = r.teams_from_preview()
+
+if __name__ == "__main__":
+	l = [replay("http://replay.pokemonshowdown.com/smogtours-ou-39893") for i in xrange(0,100)]
+	profile.run('main(l)')
+	

@@ -41,9 +41,6 @@ class Tournament():
 						  match(replay, self.unmatchedPairings)}
 		self.unmatchedReplays -= matchedReplays
 		self.unmatchedPairings -= set(self.pairingReplayMap.keys())
-		#self.unmatchedPairings = (self.unmatchedPairings 
-		#	- {pairing for pairing in self.pairingReplayMap}
-		#)
 		return matchedReplays
 		
 	def exact_match(self, replay, pairings=None):
@@ -51,9 +48,9 @@ class Tournament():
 		corresponding to the existence of the replay's player set in the pairing
 		list.
 		"""
-		pairing = frozenset(replay.get_players())
+		pairing = frozenset(format_name(player) for player in replay.players)
 		if pairing in pairings:
-			self.update_matches(pairing, replay, "exact")
+			self.pairingReplayMap[pairing] = (replay, "exact")
 			return True
 		return False
 	
@@ -62,9 +59,9 @@ class Tournament():
 		corresponding to the existence of the replay's player set in the pairing
 		list.
 		"""
-		pairing = frozenset(self.get_closest(p) for p in replay.get_players())
+		pairing = frozenset(format_name(self.get_closest(p)) for p in replay.players)
 		if pairing in pairings:
-			self.update_matches(pairing, replay, "fuzzy")
+			self.pairingReplayMap[pairing] = (replay, "fuzzy")
 			return True
 		return False
 	
@@ -73,10 +70,10 @@ class Tournament():
 		corresponding to the existence of at least one player in the replay's
 		player set in at least one pairing in the pairing set.
 		"""
-		for player in replay.get_players():
+		for player in replay.players:
 			for pairing in pairings:
-				if self.get_closest(player) in pairing:
-					self.update_matches(pairing, replay, "partial")
+				if self.get_closest(format_name(player)) in pairing:
+					self.pairingReplayMap[pairing] = (replay, "partial")
 					return True
 		return False
 		
@@ -85,28 +82,17 @@ class Tournament():
 		Levenshtein (edit) distance. Returns original name if no suitable match
 		is found.
 		"""
-
 		# Check if player exists in players
 		if player in self.players:
 			return player
-			
 		# Check if player exists in dict
 		if player in self.fuzzyNameMatches:
 			return self.fuzzyNameMatches[player]
-			
 		# Fuzzy string matching
 		newplayer = next((p for p in self.players 
-						  if fuzz.partial_ratio(p,player) > 80)
-						  ,player)
+						  if fuzz.partial_ratio(p,player) > 80), player)
 		self.fuzzyNameMatches[player] = newplayer
 		return newplayer
-		
-	def update_matches(self, pairing, replay, filter):
-		""" Whenever a pairing-replay match is found, add to the map with the
-		corresponding filter and remove from the set of unmatched pairings.
-		"""
-		self.pairingReplayMap[pairing] = (replay, filter)
-		#self.unmatchedPairings.remove(pairing)
 	
 	def match_tournament(self):
 		""" Run all filters on set of replays and attempt to match each pairing 
@@ -140,9 +126,6 @@ class Tournament():
 	def add_replays_by_number(self, *numbers):
 		self.replays | {replay for replay in self.unmatchedReplays 
 						if replay.number in numbers}
-	# Method for shifting replays around
-		# Take replay from dictionary and add to unmatched set
-		# Remove other replay from unmatched set and place in dictionary
 		
 def parse_pairings(fileString=None, url=None, pairingsRaw=None):
 	""" Given a thread URL from which pairings are to be extracted or a text
@@ -180,3 +163,13 @@ def participants_from_pairings(pairings):
 	# Pros: Negligibly faster, avoids typos made in further rounds
 	# Cons: Will mess up if "bye" is used for multiple r1 match-ups
 	return set(chain.from_iterable(pairing for pairing in pairings))
+	
+	
+def format_name(name):
+	""" Given a username, format to eliminate special characters. 
+	
+	Supported characters: Letters, numbers, spaces, period, apostrophe. 
+	"""
+	# User dictionary
+	# Move to other class?
+	return re.sub("[^\w\s'\.-]+", "", name).lower().strip()
