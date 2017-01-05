@@ -2,7 +2,7 @@
 
 import multiprocessing.dummy
 import traceback
-from urllib2 import urlopen
+from urllib2 import urlopen, HTTPError
 
 from bs4 import BeautifulSoup
 
@@ -48,8 +48,10 @@ def open_replay(url):
 	""" Validate replay links and open; return None if 404 error. """
 	try:
 		return replay(url)
+	except HTTPError:
+		return
 	except:
-		#traceback.print_exc()
-		#print url
+		traceback.print_exc()
+		print url
 		return	
 
