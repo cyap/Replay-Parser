@@ -18,7 +18,6 @@ class Tournament():
 		if alts:
 			self.fuzzyNameMatches = alts
 		self.pairingReplayMap = {}
-		self.unmatchedReplays = self.replays
 		self.unmatchedPairings = set(self.pairings)
 		
 	def filter_replays_by_pairings(self, filter, replays=None):
@@ -35,11 +34,11 @@ class Tournament():
 		# Default to class properties if nothing passed
 		# May change to default regardless
 		if not replays:
-			replays = self.unmatchedReplays
+			replays = self.replays
 		match = getattr(self, filter+"_match")
 		matchedReplays = {replay for replay in replays if 
 						  match(replay, self.unmatchedPairings)}
-		self.unmatchedReplays -= matchedReplays
+		self.replays -= matchedReplays
 		self.unmatchedPairings -= set(self.pairingReplayMap.keys())
 		return matchedReplays
 		
@@ -107,25 +106,34 @@ class Tournament():
 		#print exact, len(exact)
 		#print "Fuzzy matches", fuzzy, len(fuzzy)
 		#print "Partial matches:", partial, len(partial)
-		print "Unmatched replays:", self.unmatchedReplays
+		#print "Unmatched replays:", self.replays
+		print [(replay, replay.number) for replay in self.replays]
 		print "Unmatched pairings:", self.unmatchedPairings
 		#print self.fuzzyNameMatches
 		for x in self.pairings:
-			if x in self.pairingReplayMap:
+			if x in self.pairingReplayMap and self.pairingReplayMap[x][1] == "partial":
+				print x, self.pairingReplayMap[x]
+		for x in self.pairings:
+			if x in self.pairingReplayMap and self.pairingReplayMap[x][1] == "fuzzy":
+				print x, self.pairingReplayMap[x]
+		for x in self.pairings:
+			if x in self.pairingReplayMap and self.pairingReplayMap[x][1] == "exact":
 				print x, self.pairingReplayMap[x]
 		
 		r = exact | fuzzy | partial
 		#print sorted([replay.number for replay in r])
+		print len(r)
+		print partial
 		return r
 		
 	# Might belong in replayCompile class
 	def filter_replays_by_number(self, *numbers):
 		""" Remove replays from list by number. """
-		self.replays = self.unmatchedReplays = {replay for replay
+		self.replays = self.replays = {replay for replay
 		in self.replays if replay.number not in numbers}
 		
 	def add_replays_by_number(self, *numbers):
-		self.replays | {replay for replay in self.unmatchedReplays 
+		self.replays | {replay for replay in self.replays 
 						if replay.number in numbers}
 		
 def parse_pairings(fileString=None, url=None, pairingsRaw=None):
