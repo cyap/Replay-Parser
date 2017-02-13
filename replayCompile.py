@@ -6,7 +6,7 @@ from urllib2 import urlopen, Request, HTTPError
 
 from bs4 import BeautifulSoup
 
-from replay import replay
+from replay import Log, Replay
 
 DEFAULT_URL_HEADER = "http://replay.pokemonshowdown.com/"
 # User-agent wrapper to mimic browser requests
@@ -76,15 +76,35 @@ def replays_from_links(urls):
 	return set(filter(None, pool.map(open_replay, urls)))
 	
 def open_replay(url):
-	""" Validate replay links and open; return None if 404 error. """
+	""" Open replay links and validate; return None if 404 error. """
+	# Check if URL adheres to the usual format of /*tier-number
 	try:
-		return replay(url)
+		number = int(url.split("-")[-1])
+		tier = url.split("-")[-2]
+	except:
+		number = 0
+		tier = None
+	# Validate log
+	try:
+		log = Log([line for line in 
+				urlopen(Request(url, headers=REQUEST_HEADER))
+				.read()
+				.split("\n")
+				if line.startswith("|")])
+		players = log.parse_players()
+		winner = log.parse_winner()
+		return Replay(log, players, winner, url, number, tier)
 	except HTTPError:
+		# Unsaved replay
 		return
 	except:
+		# Corrupted log file
 		traceback.print_exc()
 		print url
 		return	
 
 if __name__ == "__main__":
-	print set(replays_from_user("Eo", tier="gen5ou"))
+	#print set(replays_from_user("McMeghan", tier="gen5ou"))
+	a = replays_from_user("Atq)+Fear", tier="gen2ou")
+	for replay in a:
+		print replay.url
