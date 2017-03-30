@@ -1,8 +1,9 @@
 """ Module used to generate stats for weekly tournament circuit. """
 
-import replayCompile
+import replay_compile
 import statCollector
 import tournament
+import profile
 
 """ List of known alternate accounts. Fed as input to ensure proper matching."""
 
@@ -51,9 +52,9 @@ urls = [
 "http://www.smogon.com/forums/threads/ou-circuit-week-4-sunday-"
 "won-by-flcl.3590052/"]
 	
-ranges = [range(217028,217106), range(217387,217476), range(219328,219468),
-		  range(219962,220073), range(222612,222710), range(223116,223193),
-		  range(224853,224951), range(225295,225365)]
+ranges = [xrange(217028,217106), xrange(217387,217476), xrange(219328,219468),
+		  xrange(219962,220073), xrange(222612,222710), xrange(223116,223193),
+		  xrange(224853,224951), xrange(225295,225365)]
 
 omissions = [None, (217448, 217469), None, None, None, (223142, 223148),
 			 None, (225301,)]
@@ -70,7 +71,7 @@ def tour(url = None, rng = None, omitReplays = None):
 	
 	pairings = tournament.parse_pairings(url = url)
 	players = tournament.participants_from_pairings(pairings)
-	replays = replayCompile.replays_from_range(rng)
+	replays = replay_compile.replays_from_range(rng)
 	tour = tournament.Tournament(replays, pairings, players, alts)
 	if omitReplays:
 		tour.filter_replays_by_number(*omitReplays)
@@ -78,21 +79,21 @@ def tour(url = None, rng = None, omitReplays = None):
 	
 
 def basic_stats(replay_list):
-	""" Function to calculate and print out basic stats. """
+	""" Function to calculate and #printout basic stats. """
 	usage = statCollector.usage(replay_list)
 	wins = statCollector.wins(replay_list)
 	totalTeams = (sum(usage.values())/6)
 	statCollector.pretty_print("Pokemon", 18, usage,wins,totalTeams)
 	
 def extended_stats(replay_list, usage = None):
-	""" Function to calculate and print out extended stats. """
+	""" Function to calculate and #printout extended stats. """
 	if not usage:
 		usage = statCollector.usage(replay_list)
 	
 	# Combinations
 	combos = statCollector.combos(replay_list, cutoff = 5)
 	combowins = statCollector.combo_wins(replay_list)
-	for i in range(2,7):
+	for i in xrange(2,7):
 		combos = statCollector.combos(replay_list, size = i, cutoff = 4)
 		combowins = statCollector.combo_wins(replay_list, size = i)
 
@@ -111,11 +112,12 @@ def extended_stats(replay_list, usage = None):
 
 def main():
 	# Net stats
-	netResults = [tour(urls[i], ranges[i], omissions[i]) for i in range(0,8)]
-	[basic_stats(netResults[i] | netResults[i+1]) for i in range (0,8,2)]
+	netResults = [tour(urls[i], ranges[i], omissions[i]) for i in xrange(0,8)]
+	[basic_stats(netResults[i] | netResults[i+1]) for i in xrange(0,8,2)]
 	RL = reduce((lambda x,y: x|y), netResults)
 	basic_stats(RL)
 	#printout(RL)
 
 if __name__ == "__main__":
-	main()
+	#main()
+	profile.run('main()')
