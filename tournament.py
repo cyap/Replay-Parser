@@ -5,8 +5,7 @@ from urllib2 import urlopen
 
 from fuzzywuzzy import fuzz
 
-import replayCompile
-import statCollector
+import replay_compile
 
 class Tournament():
 
@@ -18,6 +17,7 @@ class Tournament():
 		if alts:
 			self.fuzzyNameMatches = alts
 		self.pairingReplayMap = {}
+		self.unmatchedReplays = self.replays
 		self.unmatchedPairings = set(self.pairings)
 		
 	def filter_replays_by_pairings(self, filter, replays=None):
@@ -34,11 +34,11 @@ class Tournament():
 		# Default to class properties if nothing passed
 		# May change to default regardless
 		if not replays:
-			replays = self.replays
+			replays = self.unmatchedReplays
 		match = getattr(self, filter+"_match")
 		matchedReplays = {replay for replay in replays if 
 						  match(replay, self.unmatchedPairings)}
-		self.replays -= matchedReplays
+		self.unmatchedReplays -= matchedReplays
 		self.unmatchedPairings -= set(self.pairingReplayMap.keys())
 		return matchedReplays
 		
@@ -50,6 +50,7 @@ class Tournament():
 		pairing = frozenset(format_name(player) for player in replay.players)
 		if pairing in pairings:
 			self.pairingReplayMap[pairing] = (replay, "exact")
+			pairings.remove(pairing)
 			return True
 		return False
 	
@@ -58,10 +59,10 @@ class Tournament():
 		corresponding to the existence of the replay's player set in the pairing
 		list.
 		"""
-		pairing = frozenset(self.get_closest(format_name(p)) 
-							for p in replay.players)
+		pairing = frozenset(format_name(self.get_closest(p)) for p in replay.players)
 		if pairing in pairings:
 			self.pairingReplayMap[pairing] = (replay, "fuzzy")
+			pairings.remove(pairing)
 			return True
 		return False
 	
@@ -74,6 +75,7 @@ class Tournament():
 			for pairing in pairings:
 				if self.get_closest(format_name(player)) in pairing:
 					self.pairingReplayMap[pairing] = (replay, "partial")
+					pairings.remove(pairing)
 					return True
 		return False
 		
@@ -102,38 +104,28 @@ class Tournament():
 		fuzzy = self.filter_replays_by_pairings("fuzzy")
 		partial = self.filter_replays_by_pairings("partial")
 
-		print "Total replays:", len(self.replays)
-		#print exact, len(exact)
-		#print "Fuzzy matches", fuzzy, len(fuzzy)
-		#print "Partial matches:", partial, len(partial)
-		#print "Unmatched replays:", self.replays
-		print [(replay, replay.number) for replay in self.replays]
-		print "Unmatched pairings:", self.unmatchedPairings
-		#print self.fuzzyNameMatches
-		for x in self.pairings:
-			if x in self.pairingReplayMap and self.pairingReplayMap[x][1] == "partial":
-				print x, self.pairingReplayMap[x]
-		for x in self.pairings:
-			if x in self.pairingReplayMap and self.pairingReplayMap[x][1] == "fuzzy":
-				print x, self.pairingReplayMap[x]
-		for x in self.pairings:
-			if x in self.pairingReplayMap and self.pairingReplayMap[x][1] == "exact":
-				print x, self.pairingReplayMap[x]
+		#print"Total replays:", len(self.replays)
+		##printexact, len(exact)
+		##print"Fuzzy matches", fuzzy, len(fuzzy)
+		##print"Partial matches:", partial, len(partial)
+		##print"Unmatched replays:", self.unmatchedReplays
+		##print"Unmatched pairings:", self.unmatchedPairings
+		##printself.fuzzyNameMatches
+		#for x in self.pairings:
+		#	if x in self.pairingReplayMap:
+		#		#printx, self.pairingReplayMap[x]
 		
 		r = exact | fuzzy | partial
-		#print sorted([replay.number for replay in r])
-		print len(r)
-		print partial
 		return r
 		
-	# Might belong in replayCompile class
+	# Might belong in replay_compile class
 	def filter_replays_by_number(self, *numbers):
 		""" Remove replays from list by number. """
-		self.replays = self.replays = {replay for replay
+		self.replays = self.unmatchedReplays = {replay for replay
 		in self.replays if replay.number not in numbers}
 		
 	def add_replays_by_number(self, *numbers):
-		self.replays | {replay for replay in self.replays 
+		self.replays | {replay for replay in self.unmatchedReplays 
 						if replay.number in numbers}
 		
 def parse_pairings(fileString=None, url=None, pairingsRaw=None):
@@ -158,12 +150,12 @@ def parse_pairings(fileString=None, url=None, pairingsRaw=None):
 		
 	# Checks for "vs" with no adjacent alphanumeric characters
 	pairingsRaw = (line for line in raw if
-				   re.match(r".*\Wvs\W.*", line))
-	# Eliminate all HTML formatting tags, then split pairings by "vs" 
-	# + whitespace
-	pairings = [frozenset(format_name(name) for name in
-				re.split(r"\Wvs\W", re.sub(r"<.{0,4}>","",pairing).strip("\n"))
-				) for pairing in pairingsRaw]
+				   re.compile(r'.*\Wvs\W.*').match(line))
+	pairings = [frozenset(re.sub("&#.*;", "", name.strip()) for name in 
+				re.compile(r'\Wvs\W').split(
+				re.sub(r'<.{0,4}>',"",pairing)
+				.strip("\n").lower()
+				)) for pairing in pairingsRaw]
 	return pairings	
 
 def participants_from_pairings(pairings):
@@ -173,9 +165,13 @@ def participants_from_pairings(pairings):
 	# Cons: Will mess up if "bye" is used for multiple r1 match-ups
 	return set(chain.from_iterable(pairing for pairing in pairings))
 	
+	
 def format_name(name):
-	""" Given a username, eliminate special characters and escaped unicode.
+	""" Given a username, format to eliminate special characters. 
 	
 	Supported characters: Letters, numbers, spaces, period, apostrophe. 
 	"""
-	return re.sub("[^\w\s'\.-]+", "", re.sub("&#.*;", "", name)).lower().strip()
+	# User dictionary
+	# Move to other class?
+	return re.sub("[^\w\s'\.-]+", "", name).lower().strip()
+	#return name
