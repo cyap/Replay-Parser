@@ -1,8 +1,8 @@
 import operator
 from collections import Counter, namedtuple
-from itertools import chain, combinations, groupby
+from itertools import accumulate, chain, combinations, groupby
 
-from replay import Replay
+from .replay import Replay
 
 ROTOM_FORMS = ["-Wash", "-Heat", "-Mow", "-Fan", "-Frost"]
 PUMPKIN_FORMS = ["", "-Large", "-Super", "-Small"]
@@ -35,6 +35,10 @@ def wins(replays):
 	teams = chain.from_iterable([replay.teams["win"] for replay in replays])
 	return Counter(teams)
 	
+def wins2(replays, key):
+	teams = chain.from_iterable([replay.teams.get(key, {}) for replay in replays if replay.teams.get(key, {}) == replay.teams["win"]])
+	return Counter(teams)
+	
 def combos(replays, size = 2, cutoff = 0):
 
 	#combos = chain.from_iterable(list(combinations(replay.teams["win"], size)) 
@@ -48,10 +52,10 @@ def combos(replays, size = 2, cutoff = 0):
 	combos = Counter((format_combo(frozenset(combination)) 
 					for combination in uncounted_combos))
 	if cutoff:
-		combos = Counter({combo:use for combo,use in combos.iteritems() 
-						  if use > cutoff})
+		combos = Counter({combo:use for combo,use in combos.items() 
+						  if use >= cutoff})
 	
-	for combo in combos.keys():
+	for combo in list(combos.keys()):
 		for pokemon in AGGREGATED_FORMS:
 			if pokemon in combo:
 				for form in AGGREGATED_FORMS[pokemon]:
@@ -184,9 +188,9 @@ def aggregate_forms(data, generation="4", counter=False):
 			
 def pretty_print(cname, cwidth, usage, wins, total):
 	header = (
-		"+ ---- + {2} + --- + ------- + ------- +\n"
-		"| Rank | {0}{1} | Use | Usage % |  Win %  |\n"
-		"+ ---- + {2} + --- + ------- + ------- +\n"
+		"+ ---- + {2} + ---- + ------- + ------- +\n"
+		"| Rank | {0}{1} | Use  | Usage % |  Win %  |\n"
+		"+ ---- + {2} + ---- + ------- + ------- +\n"
 		).format(cname, " " * (cwidth - len(cname)), "-" * cwidth)
 		
 	body = ""
@@ -204,7 +208,7 @@ def pretty_print(cname, cwidth, usage, wins, total):
 	unique_ranks = accumulate([1] + counts[:-1:])
 
 	# Unpack rankings
-	rankings = chain.from_iterable([rank for i in xrange(0,count)] 
+	rankings = chain.from_iterable([rank for i in range(0,count)] 
 		for rank, count in zip(unique_ranks, counts))
 						  
 	for i, elemUse in enumerate(sorted_usage):
@@ -217,7 +221,7 @@ def pretty_print(cname, cwidth, usage, wins, total):
 		body += "| {0} | {1} | {2} | {3}{4:.2f}% | {5}{6:.2f}% |\n".format(
 				rank + " " * (4 - len(rank)),
 				str(element) + " " * (cwidth - len(str(element))), 
-				" " * (3 - len(str(uses))) + str(uses), 
+				" " * (4 - len(str(uses))) + str(uses), 
 				" " * (3-len(str(int(userate)))), userate,
 				" " * (3-len(str(int(winrate)))), winrate
 				)
@@ -244,7 +248,7 @@ def generate_rows(usage, wins, total, func=str):
 	unique_ranks = accumulate([1] + counts[:-1:])
 
 	# Unpack rankings
-	rankings = chain.from_iterable([rank for i in xrange(0,count)] 
+	rankings = chain.from_iterable([rank for i in range(0,count)] 
 		for rank, count in zip(unique_ranks, counts))
 	
 	return [
@@ -263,16 +267,16 @@ def print_table(cname, cwidth, rows):
 
 	# Row: (rank, element, usage, use %, win %)
 	header = (
-		"+ ---- + {2} + --- + ------- + ------- +\n"
-		"| Rank | {0}{1} | Use | Usage % |  Win %  |\n"
-		"+ ---- + {2} + --- + ------- + ------- +\n"
+		"+ ---- + {2} + ---- + ------- + ------- +\n"
+		"| Rank | {0}{1} | Use  | Usage % |  Win %  |\n"
+		"+ ---- + {2} + ---- + ------- + ------- +\n"
 		).format(cname, " " * (cwidth - len(cname)), "-" * cwidth)
 		
 	body = "\n".join(
 		"| {0} | {1} | {2} | {3}{4:.2f}% | {5}{6:.2f}% |".format(
 			row.rank + " " * (4 - len(row.rank)),
 			row.element + " " * (cwidth - len(row.element)),
-			" " * (3 - len(str(row.uses))) + str(row.uses), 
+			" " * (4 - len(str(row.uses))) + str(row.uses), 
 			" " * (3-len(str(int(row.userate)))), row.userate,
 			" " * (3-len(str(int(row.winrate)))), row.winrate
 		) for row in rows
@@ -284,27 +288,21 @@ def stats_from_text(text):
 	try:
 		rows = text.split("\n")[3:] # TODO: Account for header
 		split_row = rows[0].split("|")
-		total = round(int(split_row[3].strip()) / (float(split_row[4].strip().strip("%"))/100))
-		return {"usage": Counter({split_row[2].strip(): int(split_row[3].strip()) for
-				split_row in (row.split("|") for row in rows)}),
-				"wins": Counter({split_row[2].strip():
-					int(round(int(split_row[3].strip())
-					* float(split_row[5].strip().strip("%"))/100)) for split_row in (row.split("|") for row in rows)}),
+		total = round(int(split_row[3].strip()) /
+			(float(split_row[4].strip().strip("%"))/100))
+		
+		return {"usage": Counter({
+					split_row[2].strip(): int(split_row[3].strip()) for
+					split_row in (row.split("|") for row in rows)}),
+				"wins": Counter({
+					split_row[2].strip(): int(round(int(split_row[3].strip())
+					* float(split_row[5].strip().strip("%"))/100)) for split_row
+					in (row.split("|") for row in rows)}),
 				"total":total}
 	except:
 		return {"usage": Counter(), "wins": Counter(), "total": 0}
 			
 			#"total": next(int(split_row[3].strip()) / int(split_row[4].strip()) for split_row in (rows[0].split("|")))}
-			
-def accumulate(iterable, func=operator.add):
-	''' Raw code for accumulate function (not available prior to Python 3) '''
-	it = iter(iterable)
-	total = next(it)
-	yield total
-	for element in it:
-		total = func(total, element)
-		yield total
-			
 			
 			
 			

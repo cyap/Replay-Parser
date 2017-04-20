@@ -52,7 +52,12 @@ class Log:
 					for line in self.text 
 					if line.startswith("|gen")))
 		except:
-			return None
+			try:
+				tier_line = next(line for line in self.text 
+					if line.startswith("|tier"))
+				return int(next(char for char in tier_line if char.isdigit()))
+			except:
+				return 0
 					
 	def parse_tier(self):
 		return next(line.split("|")[2].lower() for line in self.text 
@@ -151,7 +156,11 @@ class Log:
 				pokemon = nicknames[player][p]
 				move = ll[3]
 				moveset = moves[player][pokemon]
-				#moveset.add(move)
+				
+				# TODO: Filter non-initial moves
+				# Struggle - filter out afterwards
+				# Transform / Copycat
+				# Z-moves
 				if move not in moveset:
 					moveset.append(move)
 			elif line[1:7] == "switch" or line[1:5] == "drag":
@@ -243,10 +252,10 @@ class Replay:
 		"""
 		try:
 			# Player 1, Player 2
-			return self._players.keys()[0:2]
+			return list(self._players.keys())[0:2]
 		except:
 			self._players = self.log.parse_players()
-			return self._players.keys()[0:2]
+			return list(self._players.keys())[0:2]
 		
 	@property
 	def playerwl(self):	
@@ -296,6 +305,13 @@ class Replay:
 			else:
 				teams = self.log.parse_teams_from_preview()
 			self._teams = teams
+			# Gen 4 Rotom
+			if self.generation == 4:
+				for team in self._teams.values():
+					for pokemon in team:
+						if pokemon.startswith("Rotom-"):
+							team.append("Rotom-Appliance")
+							break
 			for player in ("p1","p2"):
 				self._teams[self.playerwl[player]] = self._teams[player]
 			
@@ -387,6 +403,6 @@ def main(l):
 
 if __name__ == "__main__":
 	import replay_compile
-	l = [replay_compile.open_replay("http://replay.pokemonshowdown.com/smogtours-ou-39893") for i in xrange(0,500)]
+	l = [replay_compile.open_replay("http://replay.pokemonshowdown.com/smogtours-ou-39893") for i in range(0,500)]
 	profile.run('main(l)', sort="tottime")
 	
